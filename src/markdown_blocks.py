@@ -1,3 +1,5 @@
+import re
+
 block_type_paragraph = "paragraph"
 block_type_heading = "heading"
 block_type_code = "code"
@@ -17,3 +19,40 @@ def markdown_to_blocks(markdown):
         if line.strip():
             block.append(line.strip())
     return block
+
+
+def block_to_block_type(block):
+    if re.match(r'^[#]{1,6}\s+', block):
+        return block_type_heading
+    elif block.startswith('```') and block.endswith('```'):
+        return block_type_code
+    elif all(line.startswith('>') for line in block.splitlines() if line.strip()):
+        return block_type_quote
+    elif all((line.startswith('*') or line.startswith('-')) for line in block.splitlines() if line.strip()):
+        return block_type_unordered_list
+    elif check_ordered_list_format(block):
+        return block_type_ordered_list
+    else:
+        return block_type_paragraph
+
+
+def check_ordered_list_format(block):
+    # Remove empty or whitespace-only lines
+    lines = [line.strip() for line in block.splitlines() if line.strip()]
+    expected_number = 1  # Start with 1 as the first expected number
+
+    for line in lines:
+        # Check if the line starts with 'expected_number.' followed by a space
+        if not line.startswith(f"{expected_number}. "):
+            return False
+        expected_number += 1  # Increment the expected number for the next line
+
+    return True
+
+
+def count_leading_hashes(s):
+    match = re.match(r'^([#]{1,6})\s+', s)
+    if match:
+        return len(match.group(1))
+    else:
+        return 0

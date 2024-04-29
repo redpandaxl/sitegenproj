@@ -1,3 +1,4 @@
+from pathlib import Path
 from markdown_blocks import markdown_to_blocks, markdown_to_html_node
 import re
 import os
@@ -15,52 +16,63 @@ def extract_title(markdown):
     
 
 def generate_page(from_path, template_path, dest_path):
-    print(f"Generating page from {from_path} to {dest_path} using {template_path}.")
-    markdown = find_and_read_markdown(from_path)
-    template = find_and_read_template(template_path)
-    html_content = markdown_to_html_node(markdown).to_html()
-    title = extract_title(markdown)
+    print(f" * {from_path} {template_path} -> {dest_path}")
+    from_file = open(from_path, "r")
+    markdown_content = from_file.read()
+    from_file.close()
 
-    filled_html = template.replace('{{ Title }}', title).replace('{{ Content }}', html_content)
-    print(f"HTML WORK {filled_html}")
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    template_file = open(template_path, "r")
+    template = template_file.read()
+    template_file.close()
 
-    with open(f"{dest_path}/index.html", 'w', encoding='utf-8') as file:
-        file.write(filled_html)
-    print(f"Page successfully generated at {dest_path}")
+    node = markdown_to_html_node(markdown_content)
+    html = node.to_html()
+
+    title = extract_title(markdown_content)
+    template = template.replace("{{ Title }}", title)
+    template = template.replace("{{ Content }}", html)
+
+    dest_dir_path = os.path.dirname(dest_path)
+    if dest_dir_path != "":
+        os.makedirs(dest_dir_path, exist_ok=True)
+    to_file = open(dest_path, "w")
+    to_file.write(template)
 
 
-def find_and_read_markdown(directory):
-    # Walk through all files and folders in the specified directory
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            # Check if the file is a Markdown file
-            if file.endswith('.md'):
-                # Construct the full file path
-                file_path = os.path.join(root, file)
-                print(f"Markdown file found: {file_path}")  # Optional: Output found file path
-                # Open and read the file
-                with open(file_path, 'r', encoding='utf-8') as md_file:
-                    content = md_file.read()
-                return content  # Return the content of the first Markdown file found
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    # Read the template file once, as it will be used for all pages
+    with open(template_path, 'r', encoding='utf-8') as file:
+        template = file.read()
 
-    # Raise an exception if no Markdown file is found
-    raise FileNotFoundError("No Markdown file found in the directory.")
+    # Create the destination directory if it does not exist
+    Path(dest_dir_path).mkdir(parents=True, exist_ok=True)
 
-def find_and_read_template(directory):
-    # Walk through all files and folders in the specified directory
-    for root, dirs, files in os.walk(directory):
-        print(f"HTML FILES: {files}")
-        for file in files:
-            # Check if the file is a Markdown file
-            if file.endswith('.html'):
-                # Construct the full file path
-                file_path = os.path.join(root, file)
-                print(f"HTML file found: {file_path}")  # Optional: Output found file path
-                # Open and read the file
-                with open(file_path, 'r', encoding='utf-8') as md_file:
-                    content = md_file.read()
-                return content  # Return the content of the first Markdown file found
+    # Walk through the directory
+    for root, dirs, files in os.walk(dir_path_content):
+        for file_name in files:
+            if file_name.endswith('.md'):
+                # Full path to the markdown file
+                md_path = os.path.join(root, file_name)
+                # Read the markdown file
+                with open(md_path, 'r', encoding='utf-8') as md_file:
+                    markdown_content = md_file.read()
 
-    # Raise an exception if no Markdown file is found
-    raise FileNotFoundError("No HTML file found in the directory.")
+                # Convert markdown to HTML
+                html_content = markdown_to_html_node(markdown_content).to_html()
+                title = extract_title(markdown_content)
+
+                # Fill the template
+                filled_html = template.replace('{{ Title }}', title).replace('{{ Content }}', html_content)
+
+                # Define the output file path
+                rel_path = os.path.relpath(md_path, dir_path_content)
+                html_file_path = Path(dest_dir_path) / rel_path.replace('.md', '.html')
+
+                # Ensure the directory exists
+                html_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Write the output HTML file
+                with open(html_file_path, 'w', encoding='utf-8') as html_file:
+                    html_file.write(filled_html)
+
+                print(f"Generated {html_file_path} from {md_path} using {template_path}")

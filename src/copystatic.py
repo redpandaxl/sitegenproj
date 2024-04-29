@@ -1,4 +1,3 @@
-from textnode import TextNode
 import shutil
 import os
 
@@ -32,9 +31,3 @@ def replace_directory_contents(target_dir, source_dir):
             shutil.copy2(src_path, dst_path)     # Copy files
 
     print("Replacement of directory contents completed.")
-
-def main():
-    replace_directory_contents("public/", "static/")
-
-
-main()
